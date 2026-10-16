@@ -46,8 +46,6 @@
     padding: 12px;
     font-size: 18px;
     color: var(--muted);
-  }
-  .cover-row { display: grid; gap: var(--gap); }
   .switcher {
     position: fixed;
     bottom: 24px;
@@ -63,15 +61,6 @@
     align-items: center;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     z-index: 1000;
-  }
-  .switcher button {
-    background: transparent;
-    border: 0;
-    color: inherit;
-    font-size: 20px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 4px 8px;
   }
   .switcher .label { min-width: 220px; text-align: center; }
   body[data-production="1"] .switcher { display: none; }
