@@ -2,19 +2,24 @@
 
 A Samsung Tizen TV client for [RomM](https://romm.app), the self-hosted ROM manager.
 
-This is the **streaming client**: a TV-native shell that browses your RomM library and launches games through the official RomM streaming container (Selkies WebRTC).
+Plays ROMs locally in an embedded JS emulator. No host machine required.
 
-This is **not** a port of [Grout](https://github.com/rommapp/grout). Grout transfers ROMs to a device and lets a local emulator play them — Tizen TVs have no usable native emulator, so Grout's model does not apply. The closest analogy is "Steam Link for RomM".
+The TV pairs with a self-hosted RomM server via a Client API Token, downloads a selected ROM, and runs it in an [EmulatorJS](https://emulatorjs.org/)-driven emulator rendered in the browser. NES, SNES, Genesis, and GBA are in scope for the MVP. Save state and SRAM are synced with RomM the same way the official clients do it. The host machine is only used to run the RomM server itself; nothing on it has to be awake or have a GPU while the TV is playing.
+
+This is **not** a port of [Grout](https://github.com/rommapp/grout). Grout's model (transfer the ROM to a separate device, let a local emulator play it) doesn't fit a TV either, but the reason is different now: the TV has EmulatorJS embedded, so the transfer step is unnecessary. Selkies, romm-broker, and WebRTC streaming are intentionally not in the design.
 
 ## Status
 
 - [x] Project skeleton (Vite + TypeScript, Tizen Web App manifest)
-- [ ] RomM REST client (Client API Token auth)
-- [ ] TV remote input (`TVInputDevice` with keyboard fallback)
-- [ ] Library browser (platforms → game grid → detail)
-- [ ] Game launch via `romm-broker` + Selkies iframe
-- [ ] Save state list/load via broker endpoints
-- [ ] Local box-art cache
+- [ ] RomM REST client (`src/api/romm.ts`, Client API Token auth)
+- [ ] Sign-in flow (`src/ui/sign-in.ts`)
+- [ ] Library browser (`src/ui/library.ts` — platforms → game grid)
+- [ ] Game detail + ROM download (`src/api/romm.ts` content endpoint, `src/storage/roms.ts`)
+- [ ] Box-art cache (`src/storage/box-art.ts`)
+- [ ] EmulatorJS harness (`src/emulator/`, NES/SNES/Genesis/GBA cores)
+- [ ] Save-state sync (`src/storage/save-states.ts` + `/api/saves*` and `/api/states*`)
+- [ ] In-game play overlay (`src/ui/play-overlay.ts`)
+- [ ] Verified on a real Samsung TV (2024 model)
 
 ## Build
 
@@ -25,7 +30,7 @@ npm run build
 
 The build writes static assets to `dist/`. `config.xml` points the Tizen entry at `dist/index.html`, so you must run `npm run build` before packaging.
 
-`npm run dev` starts Vite locally for browser testing. Note: browser dev is not a substitute for the Tizen emulator — `TVInputDevice` and the packaging pipeline are Tizen-only.
+`npm run dev` starts Vite locally for browser testing. Note: browser dev is not a substitute for the Tizen emulator — `TVInputDevice`, the wgt storage budget, and the packaging pipeline are Tizen-only.
 
 ## Install on a TV
 
@@ -36,7 +41,7 @@ The build writes static assets to `dist/`. `config.xml` points the Tizen entry a
 5. **Project → Build Signed Package**, then **Run** to install. The app appears on the TV's home screen.
 6. First launch: enter your RomM server URL and a Client API Token, then pair.
 
-A Client API Token is created in the RomM web UI under **Settings → Security → Client API Tokens**, with the scopes the TV needs (`platforms.read`, `roms.read`, `roms.play`, `saves.read`, `saves.write`).
+A Client API Token is created in the RomM web UI under **Settings → Security → Client API Tokens**, with the scopes the TV needs (`platforms.read`, `roms.read`, `assets.read`, `saves.read`, `saves.write`, `states.read`, `states.write`).
 
 ## TV compatibility
 
@@ -45,18 +50,23 @@ A Client API Token is created in the RomM web UI under **Settings → Security �
 | 2026 | 10.0 | M130 | ✓ |
 | 2025 | 9.0 | M120 | ✓ |
 | 2024 | 8.0 | M108 | ✓ |
-| 2023 | 7.0 | M94 | ✓ |
-| 2022 | 6.5 | M85 | ✓ (basic WebCodecs) |
-| 2021 | 6.0 | M76 | ⚠ Selkies may struggle |
+| 2023 | 7.0 | M94 | ✗ below platform floor |
+| 2022 | 6.5 | M85 | ✗ below platform floor |
+| 2021 | 6.0 | M76 | ✗ below platform floor |
 | ≤2020 | ≤5.5 | ≤M69 / WebKit | ✗ |
+
+The MVP targets Tizen 8.0 (2024+) only. Older Tizen is out of scope — see the [wayfinder map](https://github.com/ilteoood/romm-tizen/issues/1) for why.
 
 Source: [Samsung Web Engine Specifications](https://developer.samsung.com/smarttv/develop/specifications/web-engine-specifications.html).
 
 ## Known limits
 
-- **No gamepad over WebHID on Tizen.** Bluetooth controllers are not exposed as WebHID; the TV routes them as keyboard arrows only. Any D-pad-only control scheme is fine; analog-stick games are not.
-- **One RomM user, one TV at a time.** The broker's room model is single-session.
-- **No local ROM playback.** Every game is streamed from the RomM webstation container. The host needs a GPU, and the network round-trip adds latency.
+- **Platform floor is Tizen 8.0 (2024+).** Older Tizen releases ship a Chromium that lacks APIs the EmulatorJS harness and the IndexedDB-backed storage rely on.
+- **No host machine required.** The RomM server can be on the same network as the TV and nothing else; nothing on it has to stream, transcode, or have a GPU.
+- **No streaming, no broker.** Selkies and romm-broker are out of the design. The TV plays the ROM itself; there is no WebRTC path.
+- **D-pad only.** Tizen exposes Bluetooth controllers as keyboard arrows. EmulatorJS's on-screen gamepad is the fallback for anything the D-pad can't reach. Analog-stick games are out of MVP scope.
+- **One RomM user, one TV at a time.** A single Client API Token is stored in the app; pairing again with a new server overwrites it.
+- **MVP scope ends at "code-complete + emulator-tested".** The destination says "verified on a real TV", but real-TV verification is a final user step (or a separate effort if no TV is available in the development environment). The repository may declare an MVP done before that step is checked off.
 - **No store distribution yet.** Sideload only. Seller Office submission is a later step.
 
 ## Architecture
@@ -69,18 +79,27 @@ config.xml         Tizen Web App manifest
 dist/              Vite build output (created by `npm run build`)
 ```
 
-Feature branches will add:
-- `src/api/romm.ts`     typed REST client for RomM
-- `src/api/broker.ts`   broker activate / save-state endpoints
-- `src/storage/...`     token + box-art cache
-- `src/input/remote.ts` TVInputDevice wrapper
-- `src/ui/...`          sign-in, library, game detail, play overlay
+Feature branches add:
+
+- `src/api/romm.ts`        typed REST client for RomM (platforms, roms, content, saves, states)
+- `src/storage/roms.ts`         downloaded ROM cache (Tizen app-private storage)
+- `src/storage/box-art.ts`      cover-art cache
+- `src/storage/save-states.ts`  save-state + SRAM cache, mirrored to RomM on change
+- `src/emulator/`               EmulatorJS integration (loader, core selection, lifecycle)
+- `src/input/remote.ts`         `TVInputDevice` wrapper, keyboard fallback
+- `src/ui/sign-in.ts`           server URL + token entry
+- `src/ui/library.ts`           platform list → game grid
+- `src/ui/game-detail.ts`       per-game screen, launch + save-state list
+- `src/ui/play-overlay.ts`      in-game pause / save / load / exit
+
+The current scaffold (`main.ts`, `styles.css`, `config.xml`) is the only code on `main` today; the rest is implemented on the feature branches named in the Status section above.
 
 ## Upstream
 
 - [RomM](https://romm.app) — server, API spec, demo
 - [RomM API docs](https://docs.romm.app/latest/) — REST reference
-- [romm-broker](https://romm-streaming.github.io/romm-broker/) — streaming session broker
+- [EmulatorJS](https://emulatorjs.org/) — the in-browser emulator we embed
 - [Grout](https://github.com/rommapp/grout) — official Linux/handheld client (transfer model, not applicable here)
-- [Selkies](https://docs.selkies.io/) — the WebRTC streaming layer we embed for gameplay
 - [Samsung TV developer](https://developer.samsung.com/smarttv/develop/getting-started/quick-start-guide.html) — Tizen web platform reference
+
+See the [wayfinder map](https://github.com/ilteoood/romm-tizen/issues/1) for the destination, the decisions taken so far, and the open questions that haven't become tickets yet.
