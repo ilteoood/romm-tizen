@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="app.romm.tizen"
+        version="0.1.0">
+
+  <access origin="*" subdomains="true"/>
+
+  <tizen:application id="app.romm.tizen" package="app.romm.tizen" type="webapp" required_version="6.0">
+    <tizen:profile name="tv"/>
+    <tizen:setting context-menu="disable" screen-orientation="landscape" install-location="auto" auto-launch="true"/>
+    <tizen:name>RomM</tizen:name>
+  </tizen:application>
+
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+
+  <content src="dist/index.html"/>
+
+  <description>RomM client for Samsung Tizen TVs</description>
+</widget>
