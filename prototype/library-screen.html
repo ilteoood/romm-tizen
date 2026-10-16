@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>RomM Tizen — Library screen prototype</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --surface: #161a22;
+    --surface-2: #1f2530;
+    --text: #f4f6fa;
+    --muted: #8a93a3;
+    --accent: #ffd166;
+    --focus: #ffd166;
+    --gap: 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 20px;
+    line-height: 1.3;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+  }
+  body { padding: 48px 56px 96px; }
+  h1 { font-size: 40px; font-weight: 700; }
+  h2 { font-size: 26px; font-weight: 600; }
+  h3 { font-size: 18px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  [tabindex]:focus, [data-focusable]:focus, .is-focused {
+    outline: 4px solid var(--focus);
+    outline-offset: 6px;
+    border-radius: 4px;
+  }
+  [data-autofocus]:focus { outline: 4px solid var(--focus); outline-offset: 6px; }
+  .cover {
+    background: linear-gradient(135deg, #2a3140 0%, #1a1f2c 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px;
+    font-size: 18px;
+    color: var(--muted);
+  }
+  .cover-row { display: grid; gap: var(--gap); }
+  .switcher {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 209, 102, 0.95);
+    color: #0b0d12;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 1000;
+  }
+  .switcher button {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .switcher .label { min-width: 220px; text-align: center; }
+  body[data-production="1"] .switcher { display: none; }
+  .icon-btn {
+    background: var(--surface-2);
+    border: 0;
+    color: var(--text);
+    width: 56px; height: 56px;
+    border-radius: 8px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  .v-a {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 40px;
+    height: 100%;
+  }
+  .v-a .left-rail {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .v-a .platform {
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .v-a .platform .count { font-size: 16px; color: var(--muted); }
+  .v-a .right-pane { display: flex; flex-direction: column; gap: 24px; }
+  .v-a .search-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .v-a .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--gap);
+    overflow-y: auto;
+  }
+  .v-a .grid .cover { aspect-ratio: 3 / 4; }
+  .v-b {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    height: 100%;
+  }
+  .v-b header { display: flex; justify-content: space-between; align-items: center; }
+  .v-b .platform-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap);
+  }
+  .v-b .platform-row .platform-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 32px 24px;
+    aspect-ratio: 4 / 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .v-b .platform-card .name { font-size: 28px; font-weight: 700; }
+  .v-b .platform-card .sub  { font-size: 16px; color: var(--muted); }
+  .v-b .grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--gap);
+    overflow-y: auto;
+  }
+  .v-b .grid .cover { aspect-ratio: 3 / 4; }
+  .v-c {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    height: 100%;
+  }
+  .v-c header { display: flex; justify-content: space-between; align-items: center; }
+  .v-c .hero-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; }
+  .v-c .hero {
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, #3a4660 0%, #1a1f2c 100%);
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    cursor: pointer;
+  }
+  .v-c .hero .title { font-size: 36px; font-weight: 700; }
+  .v-c .hero .meta  { font-size: 18px; color: var(--muted); margin-top: 8px; }
+  .v-c .rail {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: var(--gap);
+  }
+  .v-c .rail .cover { aspect-ratio: 3 / 4; }
+  .v-c .platform-ribbon {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+  }
+  .v-c .platform-ribbon .pill {
+    padding: 12px 20px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 18px;
+    white-space: nowrap;
+  }
+  .v-c .platform-ribbon .pill.is-active { background: var(--accent); color: #0b0d12; font-weight: 600; }
+  .v-c .grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--gap);
+    overflow-y: auto;
+  }
+  .v-c .grid .cover { aspect-ratio: 3 / 4; }
+</style>
+</head>
+<body data-production="0">
+
+<section class="v-a" data-variant="A" hidden>
+  <div class="left-rail" role="navigation" aria-label="Platforms">
+    <div class="platform is-focused" tabindex="0" data-autofocus>
+      <span>NES</span><span class="count">142</span>
+    </div>
+    <div class="platform" tabindex="0"><span>SNES</span><span class="count">318</span></div>
+    <div class="platform" tabindex="0"><span>Genesis</span><span class="count">201</span></div>
+    <div class="platform" tabindex="0"><span>GBA</span><span class="count">256</span></div>
+    <div class="platform" tabindex="0"><span>Collections</span><span class="count">12</span></div>
+  </div>
+  <div class="right-pane">
+    <div class="search-row">
+      <button class="icon-btn" tabindex="0" aria-label="Search">&#x2315;</button>
+      <button class="icon-btn" tabindex="0" aria-label="Settings">&#x2699;</button>
+    </div>
+    <h1>NES</h1>
+    <h3>142 games</h3>
+    <div class="grid" role="list">
+      <div class="cover" tabindex="0" role="listitem">Super Mario Bros.</div>
+      <div class="cover" tabindex="0" role="listitem">The Legend of Zelda</div>
+      <div class="cover" tabindex="0" role="listitem">Metroid</div>
+      <div class="cover" tabindex="0" role="listitem">Castlevania</div>
+      <div class="cover" tabindex="0" role="listitem">Mega Man 2</div>
+      <div class="cover" tabindex="0" role="listitem">Contra</div>
+      <div class="cover" tabindex="0" role="listitem">Kirby's Adventure</div>
+      <div class="cover" tabindex="0" role="listitem">Punch-Out!!</div>
+      <div class="cover" tabindex="0" role="listitem">Final Fantasy</div>
+      <div class="cover" tabindex="0" role="listitem">Dragon Quest</div>
+    </div>
+  </div>
+</section>
+
+<section class="v-b" data-variant="B" hidden>
+  <header>
+    <h1>RomM</h1>
+    <button class="icon-btn" tabindex="0" aria-label="Search">&#x2315;</button>
+  </header>
+  <div class="platform-row" role="navigation" aria-label="Platforms">
+    <div class="platform-card is-focused" tabindex="0" data-autofocus>
+      <div class="name">NES</div>
+      <div class="sub">142 games</div>
+    </div>
+    <div class="platform-card" tabindex="0">
+      <div class="name">SNES</div>
+      <div class="sub">318 games</div>
+    </div>
+    <div class="platform-card" tabindex="0">
+      <div class="name">Genesis</div>
+      <div class="sub">201 games</div>
+    </div>
+    <div class="platform-card" tabindex="0">
+      <div class="name">GBA</div>
+      <div class="sub">256 games</div>
+    </div>
+  </div>
+  <h2>Recently added to NES</h2>
+  <div class="grid" role="list">
+    <div class="cover" tabindex="0" role="listitem">Super Mario Bros.</div>
+    <div class="cover" tabindex="0" role="listitem">The Legend of Zelda</div>
+    <div class="cover" tabindex="0" role="listitem">Metroid</div>
+    <div class="cover" tabindex="0" role="listitem">Castlevania</div>
+    <div class="cover" tabindex="0" role="listitem">Mega Man 2</div>
+    <div class="cover" tabindex="0" role="listitem">Contra</div>
+    <div class="cover" tabindex="0" role="listitem">Kirby's Adventure</div>
+    <div class="cover" tabindex="0" role="listitem">Punch-Out!!</div>
+    <div class="cover" tabindex="0" role="listitem">Final Fantasy</div>
+    <div class="cover" tabindex="0" role="listitem">Dragon Quest</div>
+    <div class="cover" tabindex="0" role="listitem">Ninja Gaiden</div>
+    <div class="cover" tabindex="0" role="listitem">Bubble Bobble</div>
+  </div>
+</section>
+
+<section class="v-c" data-variant="C" hidden>
+  <header>
+    <h1>RomM</h1>
+    <button class="icon-btn" tabindex="0" aria-label="Search">&#x2315;</button>
+  </header>
+  <div class="hero-row">
+    <div class="hero is-focused" tabindex="0" data-autofocus>
+      <div class="meta">Continue playing &middot; NES</div>
+      <div class="title">Super Mario Bros. 3</div>
+    </div>
+    <div class="rail">
+      <div class="cover" tabindex="0">Mega Man 2</div>
+      <div class="cover" tabindex="0">Castlevania</div>
+      <div class="cover" tabindex="0">Contra</div>
+      <div class="cover" tabindex="0">Punch-Out!!</div>
+    </div>
+  </div>
+  <div class="platform-ribbon" role="navigation" aria-label="Platforms">
+    <div class="pill is-active" tabindex="0">All</div>
+    <div class="pill" tabindex="0">NES</div>
+    <div class="pill" tabindex="0">SNES</div>
+    <div class="pill" tabindex="0">Genesis</div>
+    <div class="pill" tabindex="0">GBA</div>
+    <div class="pill" tabindex="0">Collections</div>
+  </div>
+  <div class="grid" role="list">
+    <div class="cover" tabindex="0" role="listitem">Super Mario Bros.</div>
+    <div class="cover" tabindex="0" role="listitem">The Legend of Zelda</div>
+    <div class="cover" tabindex="0" role="listitem">Metroid</div>
+    <div class="cover" tabindex="0" role="listitem">Castlevania</div>
+    <div class="cover" tabindex="0" role="listitem">Mega Man 2</div>
+    <div class="cover" tabindex="0" role="listitem">Contra</div>
+    <div class="cover" tabindex="0" role="listitem">Kirby's Adventure</div>
+    <div class="cover" tabindex="0" role="listitem">Punch-Out!!</div>
+    <div class="cover" tabindex="0" role="listitem">Final Fantasy</div>
+    <div class="cover" tabindex="0" role="listitem">Dragon Quest</div>
+    <div class="cover" tabindex="0" role="listitem">Ninja Gaiden</div>
+    <div class="cover" tabindex="0" role="listitem">Bubble Bobble</div>
+    <div class="cover" tabindex="0" role="listitem">Excitebike</div>
+  </div>
+</section>
+
+<nav class="switcher" aria-label="Variant switcher">
+  <button id="prev" aria-label="Previous variant">&#x2039;</button>
+  <span class="label" id="label">A &mdash; Vertical list</span>
+  <button id="next" aria-label="Next variant">&#x203A;</button>
+</nav>
+
+<script>
+  (function () {
+    var variants = [
+      { key: 'A', name: 'Vertical list' },
+      { key: 'B', name: 'Hub & spoke (centered)' },
+      { key: 'C', name: 'Hero (PS5 / Xbox)' }
+    ];
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('production') === '1') document.body.dataset.production = '1';
+    var current = params.get('variant') || 'A';
+    var idx = Math.max(0, variants.findIndex(function (v) { return v.key === current; }));
+    show(idx);
+    document.getElementById('prev').addEventListener('click', function () { step(-1); });
+    document.getElementById('next').addEventListener('click', function () { step(+1); });
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+      if (e.key === 'ArrowLeft')  { step(-1); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { step(+1); e.preventDefault(); }
+    });
+    function step(delta) {
+      var next = (idx + delta + variants.length) % variants.length;
+      var u = new URL(window.location.href);
+      u.searchParams.set('variant', variants[next].key);
+      window.location.replace(u);
+    }
+    function show(i) {
+      document.querySelectorAll('[data-variant]').forEach(function (el) {
+        el.hidden = el.dataset.variant !== variants[i].key;
+      });
+      document.getElementById('label').textContent = variants[i].key + ' — ' + variants[i].name;
+      var target = document.querySelector('[data-variant="' + variants[i].key + '"] [data-autofocus]');
+      if (target) target.focus();
+    }
+  })();
+</script>
+</body>
+</html>
