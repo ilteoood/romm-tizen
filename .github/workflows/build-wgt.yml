@@ -1,0 +1,57 @@
+name: Build Tizen .wgt
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Package unsigned .wgt
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/wgt"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp -a dist/. "$STAGE/"
+          cp config.xml "$STAGE/"
+          test -f "$STAGE/index.html"
+          ( cd "$STAGE" \
+            && find . -type f -printf '%P\n' \
+            | LC_ALL=C sort \
+            | zip -X -9 -@ "$RUNNER_TEMP/romm.wgt" )
+
+      - name: Verify the .wgt
+        run: |
+          set -euo pipefail
+          unzip -Z1 "$RUNNER_TEMP/romm.wgt" | grep -qx 'config.xml'
+          unzip -Z1 "$RUNNER_TEMP/romm.wgt" | grep -qx 'index.html'
+          if unzip -Z1 "$RUNNER_TEMP/romm.wgt" | grep -qE '(^|/)(author-signature\.xml|signature[0-9]*\.xml)$'; then
+            echo "package unexpectedly carries a signature"; exit 1
+          fi
+          echo "OK: unsigned .wgt verified"
+
+      - name: Rename for upload
+        run: cp "$RUNNER_TEMP/romm.wgt" "romm-tizen-${{ github.sha }}.wgt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: romm-tizen-wgt
+          path: romm-tizen-${{ github.sha }}.wgt
+          if-no-files-found: error
+          retention-days: 30
