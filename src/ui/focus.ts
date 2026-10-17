@@ -130,3 +130,9 @@ export function activateFocusList(list: FocusList): () => void {
   };
   return cleanup;
 }
+
+export function deactivateFocusList(): void {
+  cleanup?.();
+  cleanup = null;
+  activeList = null;
+}

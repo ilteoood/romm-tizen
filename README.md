@@ -16,7 +16,7 @@ This is **not** a port of [Grout](https://github.com/rommapp/grout). Grout's mod
 - [ ] Library browser (`src/ui/library.ts` — platforms → game grid)
 - [x] Game detail + ROM download (`src/api/romm.ts` content endpoint, `src/storage/roms.ts`)
 - [x] Box-art cache (`src/storage/box-art.ts`)
-- [ ] EmulatorJS harness (`src/emulator/`, NES/SNES/Genesis/GBA cores)
+- [x] EmulatorJS harness (`src/emulator/`, NES/SNES/Genesis/GBA cores)
 - [ ] Save-state sync (`src/storage/save-states.ts` + `/api/saves*` and `/api/states*`)
 - [ ] In-game play overlay (`src/ui/play-overlay.ts`)
 - [ ] Verified on a real Samsung TV (2024 model)
@@ -64,7 +64,7 @@ Source: [Samsung Web Engine Specifications](https://developer.samsung.com/smartt
 - **Platform floor is Tizen 8.0 (2024+).** Older Tizen releases ship a Chromium that lacks APIs the EmulatorJS harness and the IndexedDB-backed storage rely on.
 - **No host machine required.** The RomM server can be on the same network as the TV and nothing else; nothing on it has to stream, transcode, or have a GPU.
 - **No streaming, no broker.** Selkies and romm-broker are out of the design. The TV plays the ROM itself; there is no WebRTC path.
-- **D-pad only.** Tizen exposes Bluetooth controllers as keyboard arrows. EmulatorJS's on-screen gamepad is the fallback for anything the D-pad can't reach. Analog-stick games are out of MVP scope.
+- **D-pad only.** Tizen exposes Bluetooth controllers as keyboard arrows. EmulatorJS's on-screen gamepad is the fallback for anything the D-pad can't reach. Analog-stick games are out of MVP scope. Back press on the play screen currently triggers direct emulator teardown. The D8 in-game overlay (Resume / Save / Save as... / Load... / Exit) is a follow-on slice.
 - **One RomM user, one TV at a time.** A single Client API Token is stored in the app; pairing again with a new server overwrites it.
 - **MVP scope ends at "code-complete + emulator-tested".** The destination says "verified on a real TV", but real-TV verification is a final user step (or a separate effort if no TV is available in the development environment). The repository may declare an MVP done before that step is checked off.
 - **No store distribution yet.** Sideload only. Seller Office submission is a later step.
@@ -85,11 +85,12 @@ Feature branches add:
 - `src/storage/roms.ts`         downloaded ROM cache (Tizen app-private storage)
 - `src/storage/box-art.ts`      cover-art cache
 - `src/storage/save-states.ts`  save-state + SRAM cache, mirrored to RomM on change
-- `src/emulator/`               EmulatorJS integration (loader, core selection, lifecycle)
+- `src/emulator/`               D5 EmulatorJS integration (loader, boot, data-path resolution)
 - `src/input/remote.ts`         `TVInputDevice` wrapper, keyboard fallback
 - `src/ui/sign-in.ts`           server URL + token entry
 - `src/ui/library.ts`           platform list → game grid
 - `src/ui/game-detail.ts`       per-game screen, launch + save-state list
+- `src/ui/play.ts`              play screen (EmulatorJS mount, Back = teardown)
 - `src/ui/play-overlay.ts`      in-game pause / save / load / exit
 
 The current scaffold (`main.ts`, `styles.css`, `config.xml`) is the only code on `main` today; the rest is implemented on the feature branches named in the Status section above.

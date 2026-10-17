@@ -17,6 +17,7 @@ export type SimpleRom = {
   fs_extension: string;
   fs_size_bytes: number;
   platform_id: number;
+  platform_slug: string;
   platform_display_name: string;
   summary: string;
   path_cover_small: string | null;
