@@ -160,6 +160,26 @@ export class RomMClient {
     return response.blob();
   }
 
+  async uploadSave(romId: number, slot: string, blob: Blob, fileName: string): Promise<void> {
+    const path = `/api/saves?rom_id=${encodeURIComponent(String(romId))}&slot=${encodeURIComponent(slot)}&overwrite=true`;
+    const form = new FormData();
+    form.append("saveFile", blob, fileName);
+    const response = await this.request(path, { method: "POST", body: form });
+    if (!response.ok) {
+      throw new Error(`POST ${path} → ${response.status} ${response.statusText}`);
+    }
+  }
+
+  async uploadState(romId: number, blob: Blob, fileName: string): Promise<void> {
+    const path = `/api/states?rom_id=${encodeURIComponent(String(romId))}&overwrite=true`;
+    const form = new FormData();
+    form.append("stateFile", blob, fileName);
+    const response = await this.request(path, { method: "POST", body: form });
+    if (!response.ok) {
+      throw new Error(`POST ${path} → ${response.status} ${response.statusText}`);
+    }
+  }
+
   coverArtUrl(relativePath: string | null | undefined): string | null {
     if (!relativePath) return null;
     return `${this.baseUrl}${relativePath}`;

@@ -1,8 +1,9 @@
 import { loadCredentials } from "../storage/store";
-import { RomMClient } from "../api/romm";
+import { RomMClient, type SimpleRom } from "../api/romm";
 import { romsStorage } from "../storage/roms";
-import { bootEmulator } from "../emulator/boot";
+import { bootEmulator, type EmulatorController } from "../emulator/boot";
 import { resolveDataPath } from "../emulator/data-path";
+import { showPlayOverlay } from "./play-overlay";
 
 const PLATFORM_CORE: Record<string, string> = {
   nes: "fceumm",
@@ -11,9 +12,12 @@ const PLATFORM_CORE: Record<string, string> = {
   gba: "mgba",
 };
 
-// shortcut: direct teardown on Back; the D8 in-game overlay (Resume / Save / Save as... / Load... / Exit) replaces this.
 function isBackKey(key: string): boolean {
   return key === "Backspace" || key === "Escape" || key === "GoBack";
+}
+
+function errorMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : "Unknown error";
 }
 
 export function renderPlay(root: HTMLElement, romId: number, onExit: () => void): void {
@@ -36,6 +40,12 @@ export function renderPlay(root: HTMLElement, romId: number, onExit: () => void)
   const mount = screen.querySelector<HTMLDivElement>("#game")!;
   const exitBtn = screen.querySelector<HTMLButtonElement>("[data-action='exit']")!;
 
+  let currentRom: SimpleRom | null = null;
+  let controller: EmulatorController | null = null;
+  let overlayOpen = false;
+  let backPressCount = 0;
+  let backPressTimer: number | null = null;
+
   function showError(message: string): void {
     screen.replaceChildren();
     const errorEl = document.createElement("p");
@@ -51,55 +61,100 @@ export function renderPlay(root: HTMLElement, romId: number, onExit: () => void)
   }
 
   function handleBack(event: KeyboardEvent): void {
-    if (isBackKey(event.key)) {
-      event.preventDefault();
-      teardown();
+    if (!isBackKey(event.key)) return;
+    if (overlayOpen) return;
+    event.preventDefault();
+    if (backPressTimer !== null) clearTimeout(backPressTimer);
+    backPressTimer = window.setTimeout(() => {
+      backPressCount = 0;
+      backPressTimer = null;
+    }, 500);
+    if (backPressCount === 0) {
+      backPressCount = 1;
+      void openOverlay();
+    }
+    // shortcut: a second Back within 500ms is a no-op here — the overlay's focus list handles Back (Resume).
+  }
+
+  async function openOverlay(): Promise<void> {
+    if (overlayOpen) return;
+    if (!controller || !currentRom) return;
+    overlayOpen = true;
+    try {
+      await showPlayOverlay({
+        root,
+        client,
+        rom: currentRom,
+        controller,
+        onResume: () => {
+          overlayOpen = false;
+          backPressCount = 0;
+          if (backPressTimer !== null) {
+            clearTimeout(backPressTimer);
+            backPressTimer = null;
+          }
+        },
+        onExit: () => {
+          controller
+            ?.exit()
+            .catch(() => {
+              // shortcut: best-effort teardown — the screen pop is unconditional
+            });
+          teardown();
+        },
+      });
+    } finally {
+      overlayOpen = false;
     }
   }
 
-  exitBtn.addEventListener("click", () => teardown());
+  exitBtn.addEventListener("click", () => {
+    if (overlayOpen) return;
+    if (!controller) {
+      teardown();
+      return;
+    }
+    void openOverlay();
+  });
   document.addEventListener("keydown", handleBack);
 
   void (async () => {
-    let rom;
+    let rom: SimpleRom;
     try {
       rom = await client.getRom(romId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      showError(`Failed to load game: ${message}`);
+      showError(`Failed to load game: ${errorMessage(err)}`);
       return;
     }
+    currentRom = rom;
     const core = PLATFORM_CORE[rom.platform_slug];
     if (!core) {
       showError(`Unsupported platform: ${rom.platform_slug}`);
       return;
     }
-    let romBlob;
+    let romBlob: Blob | null;
     try {
       romBlob = await romsStorage.get(romId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      showError(`Failed to read ROM cache: ${message}`);
+      showError(`Failed to read ROM cache: ${errorMessage(err)}`);
       return;
     }
     if (!romBlob) {
       showError("ROM not found in cache");
       return;
     }
-    let dataPath;
+    let dataPath: string;
     try {
       dataPath = await resolveDataPath();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      showError(`Failed to load EmulatorJS: ${message}`);
+      showError(`Failed to load EmulatorJS: ${errorMessage(err)}`);
       return;
     }
     const romName = `${rom.fs_name_no_ext}.${rom.fs_extension}`;
     try {
-      await bootEmulator({ core, romBlob, romName, dataPath, mount });
+      controller = await bootEmulator({ core, romBlob, romName, dataPath, mount });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      showError(`Failed to load EmulatorJS: ${message}`);
+      showError(`Failed to load EmulatorJS: ${errorMessage(err)}`);
     }
   })();
 }

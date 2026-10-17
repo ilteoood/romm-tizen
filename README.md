@@ -18,7 +18,7 @@ This is **not** a port of [Grout](https://github.com/rommapp/grout). Grout's mod
 - [x] Box-art cache (`src/storage/box-art.ts`)
 - [x] EmulatorJS harness (`src/emulator/`, NES/SNES/Genesis/GBA cores)
 - [x] Save-state sync (`src/storage/save-states.ts` + `/api/saves*` and `/api/states*`)
-- [ ] In-game play overlay (`src/ui/play-overlay.ts`)
+- [x] In-game play overlay (`src/ui/play-overlay.ts`)
 - [ ] Verified on a real Samsung TV (2024 model)
 
 ## Build
@@ -64,8 +64,9 @@ Source: [Samsung Web Engine Specifications](https://developer.samsung.com/smartt
 - **Platform floor is Tizen 8.0 (2024+).** Older Tizen releases ship a Chromium that lacks APIs the EmulatorJS harness and the IndexedDB-backed storage rely on.
 - **No host machine required.** The RomM server can be on the same network as the TV and nothing else; nothing on it has to stream, transcode, or have a GPU.
 - **No streaming, no broker.** Selkies and romm-broker are out of the design. The TV plays the ROM itself; there is no WebRTC path.
-- **D-pad only.** Tizen exposes Bluetooth controllers as keyboard arrows. EmulatorJS's on-screen gamepad is the fallback for anything the D-pad can't reach. Analog-stick games are out of MVP scope. Back press on the play screen currently triggers direct emulator teardown. The D8 in-game overlay (Resume / Save / Save as... / Load... / Exit) is a follow-on slice.
-- **The in-game overlay (Resume / Save / Save as... / Load... / Exit) and the "Play auto-loads the autosave slot" behaviour are a follow-on slice.** The game-detail panel currently shows the save-state list read-only.
+- **D-pad only.** Tizen exposes Bluetooth controllers as keyboard arrows. EmulatorJS's on-screen gamepad is the fallback for anything the D-pad can't reach. Analog-stick games are out of MVP scope. Back press on the play screen opens the D8 in-game overlay (Resume / Save / Save as... / Load... / Exit); Exit runs the flush + teardown.
+- **The "Play auto-loads the autosave slot" behaviour is a follow-on slice.** The game-detail panel currently shows the save-state list read-only.
+- **Save / Save as… are approximated in this slice.** Both produce a new auto-timestamped state snapshot on RomM (uploaded to `/api/states`), not a true SRAM autosave written to the `/api/saves` autosave slot. The EmulatorJS API for reading the SRAM blob isn't clean; tightening the Save action to overwrite the autosave slot is a follow-up.
 - **One RomM user, one TV at a time.** A single Client API Token is stored in the app; pairing again with a new server overwrites it.
 - **MVP scope ends at "code-complete + emulator-tested".** The destination says "verified on a real TV", but real-TV verification is a final user step (or a separate effort if no TV is available in the development environment). The repository may declare an MVP done before that step is checked off.
 - **No store distribution yet.** Sideload only. Seller Office submission is a later step.
@@ -91,8 +92,8 @@ Feature branches add:
 - `src/ui/sign-in.ts`           server URL + token entry
 - `src/ui/library.ts`           platform list → game grid
 - `src/ui/game-detail.ts`       per-game screen, launch + save-state list
-- `src/ui/play.ts`              play screen (EmulatorJS mount, Back = teardown)
-- `src/ui/play-overlay.ts`      in-game pause / save / load / exit
+- `src/ui/play.ts`              play screen (EmulatorJS mount, Back opens D8 overlay)
+- `src/ui/play-overlay.ts`      in-game overlay (D8 Resume / Save / Save as… / Load… / Exit)
 
 The current scaffold (`main.ts`, `styles.css`, `config.xml`) is the only code on `main` today; the rest is implemented on the feature branches named in the Status section above.
 

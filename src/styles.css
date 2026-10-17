@@ -456,3 +456,88 @@ main {
   color: var(--muted);
   text-align: center;
 }
+
+.play-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-overlay[hidden] {
+  display: none;
+}
+
+.play-overlay .backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+
+.play-overlay .panel {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  max-width: 720px;
+  width: 100%;
+  padding: 32px;
+  border-radius: 12px;
+}
+
+.play-overlay h2 {
+  margin: 0;
+  font-size: 1.4em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.play-overlay .actions,
+.play-overlay .picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0 0;
+}
+
+.play-overlay .actions[hidden],
+.play-overlay .picker[hidden] {
+  display: none;
+}
+
+.play-overlay .actions button,
+.play-overlay .picker button {
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  font: inherit;
+  font-size: 0.9em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.play-overlay .picker button[data-autosave="true"] {
+  border-left: 4px solid var(--accent);
+}
+
+.play-overlay .actions button[data-danger="true"] {
+  color: #ff6b6b;
+}
+
+.play-overlay .status {
+  margin: 16px 0 0 0;
+  min-height: 1em;
+  font-size: 0.7em;
+  color: var(--muted);
+}
+
+.play-overlay[data-state="error"] .status {
+  color: #ff6b6b;
+}
