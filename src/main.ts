@@ -1,6 +1,12 @@
 import { loadCredentials } from "./storage/store";
 import { renderSignIn } from "./ui/sign-in";
 import { renderLibrary } from "./ui/library";
+import { renderGameDetail } from "./ui/game-detail";
+
+type Screen =
+  | { kind: "sign-in" }
+  | { kind: "library" }
+  | { kind: "detail"; romId: number };
 
 const root: HTMLElement = (() => {
   const el = document.querySelector<HTMLElement>("#app");
@@ -8,20 +14,43 @@ const root: HTMLElement = (() => {
   return el;
 })();
 
-function boot(): void {
-  if (loadCredentials()) {
-    renderLibrary(root, signOut);
-  } else {
-    renderSignIn(root, signedIn);
+let stack: Screen[] = [];
+
+function initialStack(): Screen[] {
+  return loadCredentials() ? [{ kind: "library" }] : [{ kind: "sign-in" }];
+}
+
+function render(): void {
+  const screen = stack[stack.length - 1] ?? { kind: "sign-in" as const };
+  switch (screen.kind) {
+    case "sign-in":
+      renderSignIn(root, () => replace({ kind: "library" }));
+      break;
+    case "library":
+      renderLibrary(root, () => replace({ kind: "sign-in" }), (romId) => push({ kind: "detail", romId }));
+      break;
+    case "detail":
+      renderGameDetail(root, screen.romId, () => pop());
+      break;
   }
 }
 
-function signOut(): void {
-  boot();
+function push(screen: Screen): void {
+  stack = [...stack, screen];
+  render();
 }
 
-function signedIn(): void {
-  boot();
+function pop(): void {
+  if (stack.length > 1) {
+    stack = stack.slice(0, -1);
+    render();
+  }
 }
 
-boot();
+function replace(screen: Screen): void {
+  stack = [screen];
+  render();
+}
+
+stack = initialStack();
+render();
