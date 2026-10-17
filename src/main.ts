@@ -2,11 +2,14 @@ import { loadCredentials } from "./storage/store";
 import { renderSignIn } from "./ui/sign-in";
 import { renderLibrary } from "./ui/library";
 import { renderGameDetail } from "./ui/game-detail";
+import { renderPlay } from "./ui/play";
+import { deactivateFocusList } from "./ui/focus";
 
 type Screen =
   | { kind: "sign-in" }
   | { kind: "library" }
-  | { kind: "detail"; romId: number };
+  | { kind: "detail"; romId: number }
+  | { kind: "play"; romId: number };
 
 const root: HTMLElement = (() => {
   const el = document.querySelector<HTMLElement>("#app");
@@ -30,7 +33,13 @@ function render(): void {
       renderLibrary(root, () => replace({ kind: "sign-in" }), (romId) => push({ kind: "detail", romId }));
       break;
     case "detail":
-      renderGameDetail(root, screen.romId, () => pop());
+      renderGameDetail(root, screen.romId, () => pop(), (romId) => {
+        deactivateFocusList();
+        push({ kind: "play", romId });
+      });
+      break;
+    case "play":
+      renderPlay(root, screen.romId, () => pop());
       break;
   }
 }

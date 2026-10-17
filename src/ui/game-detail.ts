@@ -4,7 +4,12 @@ import { extractCoverTs, getCachedCover, storeCover } from "../storage/box-art";
 import { romsStorage } from "../storage/roms";
 import { activateFocusList } from "./focus";
 
-export function renderGameDetail(root: HTMLElement, romId: number, onBack: () => void): void {
+export function renderGameDetail(
+  root: HTMLElement,
+  romId: number,
+  onBack: () => void,
+  onPlay: (romId: number) => void,
+): void {
   const credentials = loadCredentials();
   if (!credentials) {
     onBack();
@@ -106,9 +111,8 @@ export function renderGameDetail(root: HTMLElement, romId: number, onBack: () =>
     const rom = currentRom;
     const meta = await romsStorage.metadata(rom.id);
     if (meta) {
-      setStatus("Starting emulator…");
-      // shortcut: emulator launch is the next slice; the loader will replace this.
-      console.log("play", { romId: rom.id, fsName: rom.fs_name, ext: rom.fs_extension });
+      cleanupFocus();
+      onPlay(rom.id);
       return;
     }
     const controller = new AbortController();
@@ -132,6 +136,8 @@ export function renderGameDetail(root: HTMLElement, romId: number, onBack: () =>
         crcHash: null,
       });
       setStatus("Ready");
+      cleanupFocus();
+      onPlay(rom.id);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setStatus("Cancelled");
