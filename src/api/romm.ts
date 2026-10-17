@@ -1,5 +1,29 @@
 import type { Credentials } from "../storage/store";
 
+export type SaveEntry = {
+  id: number;
+  rom_id: number;
+  slot: string;
+  file_name: string | null;
+  file_name_no_tags: string | null;
+  file_extension: string | null;
+  file_size_bytes: number;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+};
+
+export type StateEntry = {
+  id: number;
+  rom_id: number;
+  file_name: string | null;
+  file_name_no_tags: string | null;
+  file_size_bytes: number;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+};
+
 export type Platform = {
   id: number;
   name: string;
@@ -106,6 +130,34 @@ export class RomMClient {
 
   async downloadRom(id: number, fileName: string = "rom", signal?: AbortSignal): Promise<Response> {
     return this.request(`/api/roms/${id}/content/${fileName}`, { signal });
+  }
+
+  // shortcut: R3 research says /api/saves and /api/states return bare JSON arrays. If RomM ever
+  //            paginates, unwrap here and document the upgrade.
+  async listSaves(romId: number): Promise<SaveEntry[]> {
+    return this.getJson<SaveEntry[]>(`/api/saves?rom_id=${encodeURIComponent(String(romId))}`);
+  }
+
+  async listStates(romId: number): Promise<StateEntry[]> {
+    return this.getJson<StateEntry[]>(`/api/states?rom_id=${encodeURIComponent(String(romId))}`);
+  }
+
+  async downloadSave(romId: number, slot: string = "autosave"): Promise<Blob> {
+    const path = `/api/saves?rom_id=${encodeURIComponent(String(romId))}&slot=${encodeURIComponent(slot)}`;
+    const response = await this.request(path);
+    if (!response.ok) {
+      throw new Error(`GET ${path} → ${response.status} ${response.statusText}`);
+    }
+    return response.blob();
+  }
+
+  async downloadState(stateId: number): Promise<Blob> {
+    const path = `/api/states/${encodeURIComponent(String(stateId))}`;
+    const response = await this.request(path);
+    if (!response.ok) {
+      throw new Error(`GET ${path} → ${response.status} ${response.statusText}`);
+    }
+    return response.blob();
   }
 
   coverArtUrl(relativePath: string | null | undefined): string | null {
