@@ -1,8 +1,116 @@
 import { loadCredentials } from "../storage/store";
-import { RomMClient, type SimpleRom } from "../api/romm";
+import { RomMClient, type SaveEntry, type SimpleRom, type StateEntry } from "../api/romm";
 import { extractCoverTs, getCachedCover, storeCover } from "../storage/box-art";
 import { romsStorage } from "../storage/roms";
+import { setCachedSaveStateList } from "../storage/save-states";
 import { activateFocusList } from "./focus";
+
+const SAVE_LIST_VISIBLE_LIMIT = 20;
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 16).replace("T", " ");
+  }
+}
+
+type SaveOrState = { label: string; updatedAt: string };
+
+function entryLabel(entry: SaveEntry | StateEntry): string {
+  return entry.file_name_no_tags ?? entry.file_name ?? "Untitled";
+}
+
+function renderSaveStates(
+  container: HTMLElement,
+  saves: SaveEntry[],
+  states: StateEntry[],
+): void {
+  container.replaceChildren();
+  const autosave = saves.find((s) => s.slot === "autosave");
+  const other: SaveOrState[] = [
+    ...saves.filter((s) => s.slot !== "autosave").map((s) => ({ label: entryLabel(s), updatedAt: s.updated_at })),
+    ...states.map((s) => ({ label: entryLabel(s), updatedAt: s.updated_at })),
+  ];
+  // shortcut: sort by updated_at for stability (rename doesn't move the row); created_at would also work.
+  other.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+
+  if (!autosave && other.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No save states yet.";
+    container.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "save-list";
+
+  if (autosave) {
+    const row = document.createElement("div");
+    row.className = "entry is-autosave";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = "Autosave";
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = formatTimestamp(autosave.updated_at);
+    row.append(name, when);
+    list.appendChild(row);
+  }
+
+  const visible = other.slice(0, SAVE_LIST_VISIBLE_LIMIT);
+  for (const entry of visible) {
+    const row = document.createElement("div");
+    row.className = "entry";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = entry.label;
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = formatTimestamp(entry.updatedAt);
+    row.append(name, when);
+    list.appendChild(row);
+  }
+
+  if (other.length > SAVE_LIST_VISIBLE_LIMIT) {
+    const more = document.createElement("div");
+    more.className = "more";
+    more.textContent = `+ ${other.length - SAVE_LIST_VISIBLE_LIMIT} more`;
+    list.appendChild(more);
+  }
+
+  container.appendChild(list);
+}
+
+function renderSaveStatesError(
+  container: HTMLElement,
+  savesError: string | null,
+  statesError: string | null,
+): void {
+  container.replaceChildren();
+  if (savesError && statesError) {
+    const msg = document.createElement("p");
+    msg.className = "empty";
+    msg.textContent = `Failed to load save states: ${savesError}`;
+    container.appendChild(msg);
+    return;
+  }
+  if (savesError) {
+    const msg = document.createElement("p");
+    msg.className = "empty";
+    msg.textContent = `SRAM list unavailable: ${savesError}`;
+    container.appendChild(msg);
+  }
+  if (statesError) {
+    const msg = document.createElement("p");
+    msg.className = "empty";
+    msg.textContent = `Snapshot list unavailable: ${statesError}`;
+    container.appendChild(msg);
+  }
+}
 
 export function renderGameDetail(
   root: HTMLElement,
@@ -34,7 +142,7 @@ export function renderGameDetail(
         <p class="download-status" data-status>Loading…</p>
         <section class="save-states">
           <h2>Save states</h2>
-          <p class="empty">No save states yet.</p>
+          <div data-save-list></div>
         </section>
       </div>
     </div>
@@ -47,6 +155,7 @@ export function renderGameDetail(
   const summaryEl = screen.querySelector<HTMLElement>("[data-summary]")!;
   const statusEl = screen.querySelector<HTMLElement>("[data-status]")!;
   const coverImg = screen.querySelector<HTMLImageElement>("[data-cover]")!;
+  const saveListEl = screen.querySelector<HTMLElement>("[data-save-list]")!;
 
   let currentRom: SimpleRom | null = null;
   let activeController: AbortController | null = null;
@@ -106,6 +215,26 @@ export function renderGameDetail(
     })();
   }
 
+  // shortcut: the panel is read-only. The in-game overlay slice adds the Load... picker
+  //            and the "Play auto-loads the autosave slot" behaviour (D8 follow-on).
+  async function loadSaveStates(id: number): Promise<void> {
+    const [savesResult, statesResult] = await Promise.allSettled([
+      client.listSaves(id),
+      client.listStates(id),
+    ]);
+    const saves = savesResult.status === "fulfilled" ? savesResult.value : null;
+    const states = statesResult.status === "fulfilled" ? statesResult.value : null;
+    const savesError = savesResult.status === "rejected" ? errorMessage(savesResult.reason) : null;
+    const statesError = statesResult.status === "rejected" ? errorMessage(statesResult.reason) : null;
+
+    if (saves && states) {
+      renderSaveStates(saveListEl, saves, states);
+      void setCachedSaveStateList({ romId: id, saves, states, fetchedAt: Date.now() });
+      return;
+    }
+    renderSaveStatesError(saveListEl, savesError, statesError);
+  }
+
   async function startPlay(): Promise<void> {
     if (!currentRom || activeController) return;
     const rom = currentRom;
@@ -163,6 +292,7 @@ export function renderGameDetail(
       summaryEl.textContent = rom.summary;
       loadCover(rom);
       setStatus(meta ? "Ready" : "Not downloaded");
+      void loadSaveStates(romId);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       titleEl.textContent = "Could not load game";
@@ -170,4 +300,8 @@ export function renderGameDetail(
       setStatus(`Failed: ${message}`);
     }
   })();
+}
+
+function errorMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : "Unknown error";
 }

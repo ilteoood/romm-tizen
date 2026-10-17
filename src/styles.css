@@ -361,6 +361,50 @@ main {
   font-size: 0.7em;
 }
 
+.game-detail .save-states .save-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.game-detail .save-states .entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+}
+
+.game-detail .save-states .entry.is-autosave {
+  border-left-color: var(--accent);
+}
+
+.game-detail .save-states .entry .name {
+  font-size: 0.75em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-detail .save-states .entry .when {
+  font-size: 0.65em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.game-detail .save-states .more {
+  text-align: center;
+  font-size: 0.65em;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
 .play {
   position: relative;
   width: 100%;
