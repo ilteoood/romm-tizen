@@ -103,6 +103,10 @@ export class RomMClient {
     return this.getJson<SimpleRom>(`/api/roms/${id}/simple`);
   }
 
+  async downloadRom(id: number, fileName: string = "rom", signal?: AbortSignal): Promise<Response> {
+    return this.request(`/api/roms/${id}/content/${fileName}`, { signal });
+  }
+
   coverArtUrl(relativePath: string | null | undefined): string | null {
     if (!relativePath) return null;
     return `${this.baseUrl}${relativePath}`;

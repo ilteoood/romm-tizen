@@ -5,7 +5,11 @@ import { activateFocusList } from "./focus";
 
 const ROMS_PER_PLATFORM = 200;
 
-export function renderLibrary(root: HTMLElement, onSignOut: () => void): void {
+export function renderLibrary(
+  root: HTMLElement,
+  onSignOut: () => void,
+  onSelectRom: (romId: number) => void,
+): void {
   const credentials = loadCredentials();
   if (!credentials) {
     onSignOut();
@@ -49,6 +53,12 @@ export function renderLibrary(root: HTMLElement, onSignOut: () => void): void {
   const cleanupFocus = activateFocusList({
     items: focusable,
     onSelect: (item) => {
+      const romId = item.dataset.romId;
+      if (romId) {
+        cleanupFocus();
+        onSelectRom(Number(romId));
+        return;
+      }
       const platformId = item.dataset.platformId;
       if (platformId) {
         const platform = platforms.find((p) => p.id === Number(platformId));
